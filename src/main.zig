@@ -121,7 +121,7 @@ fn printHelp() void {
         \\    spush <task>  | pushes a task to the short-term stack
         \\    spop          | pops the latest task from the short-term stack
         \\Long-Term Stack Commands:
-        \\    lwipe         | wipes all short-term tasks
+        \\    lwipe         | wipes all long-term tasks
         \\    llist         | lists all the tasks and their creation dates on the long-term stack
         \\    lpush <task>  | pushes a task to the long-term stack
         \\    lpop          | pops the latest task from the long-term stack

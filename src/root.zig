@@ -3,7 +3,7 @@ pub const stack = @import("stack.zig");
 
 const std = @import("std");
 
-pub const version = "0.1.0";
+pub const version = "0.1.1";
 
 /// Returns the home-path of taskstack that's owned by the caller
 pub fn getHome(allocator: std.mem.Allocator) ![]const u8 {
@@ -26,4 +26,16 @@ pub fn getHome(allocator: std.mem.Allocator) ![]const u8 {
 
     // return the home directory
     return home;
+}
+
+/// Prints a line from the done-manifesto to stderr
+pub fn printManifesto() void {
+    const manifesto = comptime @embedFile("done-manifesto.txt");
+    comptime var lines_iter = std.mem.splitSequence(u8, manifesto, "\n");
+    comptime var lines: [12][]const u8 = undefined;
+    comptime for (0..12) |i| {
+        lines[i] = lines_iter.next().?;
+    };
+    const rand = std.crypto.random.intRangeAtMost(usize, 0, 11);
+    std.debug.print("> {s}\n", .{lines[rand]});
 }

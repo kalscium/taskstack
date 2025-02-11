@@ -29,11 +29,15 @@ pub fn block_push(allocator: std.mem.Allocator, path: []const u8, bytes: []const
     var metadata = root.block.MetaData.decode(&mb_buffer);
 
     // check for space on the content stack
-    if (@as(u16, @intCast(bytes.len)) > root.block.block_size - metadata.content_stack_ptr)
+    if (@as(u16, @intCast(bytes.len)) > root.block.block_size - metadata.content_stack_ptr) {
+        root.printManifesto();
         return error.TStackOverflow;
+    }
     // check for space on the size stack
-    if (@sizeOf(u16) > metadata.content_stack_base - metadata.size_stack_ptr)
+    if (@sizeOf(u16) > metadata.content_stack_base - metadata.size_stack_ptr) {
+        root.printManifesto();
         return error.TStackOverflow;
+    }
 
     // push the contents to the content stack
     try push(file, &metadata.content_stack_ptr, bytes);
