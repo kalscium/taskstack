@@ -1,24 +1,134 @@
 const std = @import("std");
+const taskstack = @import("taskstack");
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    // initialise the allocator
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    // get the args
+    const args = try std.process.argsAlloc(allocator);
+    defer allocator.free(args);
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    // check for no args
+    if (args.len == 1) {
+        printHelp();
+        return;
+    }
 
-    try bw.flush(); // don't forget to flush!
+    // check for the help option
+    if (std.mem.eql(u8, args[1], "--help") or std.mem.eql(u8, args[1], "-h")) {
+        printHelp();
+        return;
+    }
+
+    // check for the version option
+    if (std.mem.eql(u8, args[1], "--version") or std.mem.eql(u8, args[1], "-V")) {
+        std.debug.print("taskstack {s}\n", .{taskstack.version});
+        return;
+    }
+
+    // check for the 'wipe' commands
+    if (std.mem.eql(u8, args[1], "swipe")) {
+        const path = try taskstack.block.shortTermPath(allocator);
+        defer allocator.free(path);
+        try taskstack.block.init(allocator, path);
+        return;
+    }
+    if (std.mem.eql(u8, args[1], "lwipe")) {
+        const path = try taskstack.block.longTermPath(allocator);
+        defer allocator.free(path);
+        try taskstack.block.init(allocator, path);
+        return;
+    }
+
+    // check for the 'list' commands
+    if (std.mem.eql(u8, args[1], "slist")) {
+        const path = try taskstack.block.shortTermPath(allocator);
+        defer allocator.free(path);
+        std.debug.print("<<< SHORT-TERM STACK ENTRIES >>>\n", .{});
+        try taskstack.block.list(allocator, path);
+        return;
+    }
+    if (std.mem.eql(u8, args[1], "llist")) {
+        const path = try taskstack.block.longTermPath(allocator);
+        defer allocator.free(path);
+        std.debug.print("<<< LONG-TERM STACK ENTRIES >>>\n", .{});
+        try taskstack.block.list(allocator, path);
+        return;
+    }
+
+    // check for the 'push' commands
+    if (std.mem.eql(u8, args[1], "spush")) {
+        // get the stack entry contents
+        if (args.len < 3)
+            return error.ExpectedArgument;
+        const contents = args[2];
+
+        const path = try taskstack.block.shortTermPath(allocator);
+        defer allocator.free(path);
+
+        try taskstack.block.push(allocator, path, contents);
+        return;
+    }
+    if (std.mem.eql(u8, args[1], "lpush")) {
+        // get the stack entry contents
+        if (args.len < 3)
+            return error.ExpectedArgument;
+        const contents = args[2];
+
+        const path = try taskstack.block.longTermPath(allocator);
+        defer allocator.free(path);
+
+        try taskstack.block.push(allocator, path, contents);
+        return;
+    }
+
+    // check for the 'pop' commands
+    if (std.mem.eql(u8, args[1], "spop")) {
+        const path = try taskstack.block.shortTermPath(allocator);
+        defer allocator.free(path);
+        const contents = try taskstack.block.pop(allocator, path);
+        defer allocator.free(contents);
+        std.debug.print("popped value: ", .{});
+        try std.io.getStdOut().writeAll(contents);
+        std.debug.print("\n", .{});
+        return;
+    }
+    if (std.mem.eql(u8, args[1], "lpop")) {
+        const path = try taskstack.block.longTermPath(allocator);
+        defer allocator.free(path);
+        const contents = try taskstack.block.pop(allocator, path);
+        defer allocator.free(contents);
+        std.debug.print("popped value: ", .{});
+        try std.io.getStdOut().writeAll(contents);
+        std.debug.print("\n", .{});
+        return;
+    }
+
+    // if nothing matches it
+    return error.UnknownCommandOrOption;
 }
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+/// Prints the help menu message
+fn printHelp() void {
+    const help =
+        \\Usage: taskstack [command] [argument]
+        \\Short-Term Stack Commands:
+        \\    swipe         | wipes all short-term tasks
+        \\    slist         | lists all the tasks and their creation dates on the short-term stack
+        \\    spush <task>  | pushes a task to the short-term stack
+        \\    spop          | pops the latest task from the short-term stack
+        \\Long-Term Stack Commands:
+        \\    lwipe         | wipes all short-term tasks
+        \\    llist         | lists all the tasks and their creation dates on the long-term stack
+        \\    lpush <task>  | pushes a task to the long-term stack
+        \\    lpop          | pops the latest task from the long-term stack
+        \\Options:
+        \\    -h, --help    | prints this help message
+        \\    -V, --version | prints the version
+        \\
+    ;
+    std.debug.print(help, .{});
 }
