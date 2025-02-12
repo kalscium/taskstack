@@ -3,7 +3,7 @@ pub const stack = @import("stack.zig");
 
 const std = @import("std");
 
-pub const version = "0.1.1";
+pub const version = "0.2.0";
 
 /// Returns the home-path of taskstack that's owned by the caller
 pub fn getHome(allocator: std.mem.Allocator) ![]const u8 {

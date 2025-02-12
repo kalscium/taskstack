@@ -64,7 +64,8 @@ pub fn main() !void {
         // get the stack entry contents
         if (args.len < 3)
             return error.ExpectedArgument;
-        const contents = args[2];
+        const contents = try taskstack.stack.addTimestamp(allocator, args[2]);
+        defer allocator.free(contents);
 
         const path = try taskstack.block.shortTermPath(allocator);
         defer allocator.free(path);
@@ -76,7 +77,8 @@ pub fn main() !void {
         // get the stack entry contents
         if (args.len < 3)
             return error.ExpectedArgument;
-        const contents = args[2];
+        const contents = try taskstack.stack.addTimestamp(allocator, args[2]);
+        defer allocator.free(contents);
 
         const path = try taskstack.block.longTermPath(allocator);
         defer allocator.free(path);
@@ -91,8 +93,10 @@ pub fn main() !void {
         defer allocator.free(path);
         const contents = try taskstack.block.pop(allocator, path);
         defer allocator.free(contents);
-        std.debug.print("popped value: ", .{});
-        try std.io.getStdOut().writeAll(contents);
+        const timestamp = try taskstack.stack.extractTimestamp(allocator, contents);
+        defer allocator.free(timestamp);
+        std.debug.print("popped value ({s}): ", .{timestamp});
+        try std.io.getStdOut().writeAll(contents[@sizeOf(i64)..]);
         std.debug.print("\n", .{});
         return;
     }
@@ -101,8 +105,10 @@ pub fn main() !void {
         defer allocator.free(path);
         const contents = try taskstack.block.pop(allocator, path);
         defer allocator.free(contents);
-        std.debug.print("popped value: ", .{});
-        try std.io.getStdOut().writeAll(contents);
+        const timestamp = try taskstack.stack.extractTimestamp(allocator, contents);
+        defer allocator.free(timestamp);
+        std.debug.print("popped value ({s}): ", .{timestamp});
+        try std.io.getStdOut().writeAll(contents[@sizeOf(i64)..]);
         std.debug.print("\n", .{});
         return;
     }

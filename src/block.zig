@@ -179,23 +179,50 @@ pub fn list(allocator: std.mem.Allocator, path: []const u8) !void {
     // calculated based upon the size stack as the lengths are known (u16)
     const length = (metadata.size_stack_ptr - size_stack_base) / @sizeOf(u16);
 
-    // iterate through all the stack entries
-    var content_ptr = metadata.content_stack_base;
-    var stdout = std.io.getStdOut();
-    for (0..length) |size_idx| {
+    // both create an array of all the lengths and also find the longest content length
+    var longest_len: usize = 0;
+    var sizes = try allocator.alloc(u16, length);
+    defer allocator.free(sizes);
+    for (0..length) |i| {
         // get the size of the contents
-        var sz_buffer: [@sizeOf(u16)*2]u8 = undefined;
-        try file.seekTo(size_stack_base + size_idx * @sizeOf(u16));
+        var sz_buffer: [@sizeOf(u16)]u8 = undefined;
+        try file.seekTo(size_stack_base + i * @sizeOf(u16));
         _ = try file.readAll(&sz_buffer);
         const sz = std.mem.bigToNative(u16, std.mem.bytesToValue(u16, &sz_buffer));
 
-        // print the contents
+        // update the longest length & sizes array
+        sizes[i] = sz;
+        if (sz > longest_len)
+            longest_len = sz;
+    }
+
+    // iterate through all the content stack entries and print them
+    var content_ptr = metadata.content_stack_base;
+    var stdout = std.io.getStdOut();
+    for (sizes) |sz| {
+        // get the contents
         const contents = try allocator.alloc(u8, sz);
         defer allocator.free(contents);
         try file.seekTo(content_ptr);
         _ = try file.readAll(contents);
-        try std.fmt.format(stdout.writer(), "* {s}\n", .{contents});
 
+        // calculate the padding
+        const padding_sz = longest_len - sz;
+        const padding = try allocator.alloc(u8, padding_sz);
+        defer allocator.free(padding);
+        for (0..padding_sz) |i| {
+            padding[i] = ' ';
+        }
+
+        // get the iso timestamp
+        const timestamp = try root.stack.extractTimestamp(allocator, contents);
+        defer allocator.free(timestamp);
+
+        // print it
+        std.debug.print("* ", .{});
+        _ = try stdout.writeAll(contents[@sizeOf(i64)..]);
+        std.debug.print("{s} | {s}\n", .{ padding, timestamp });
+        
         // update the content ptr
         content_ptr += sz;
     }
