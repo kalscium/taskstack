@@ -21,9 +21,9 @@ pub const MetaData = struct {
         const content_stack_ptr = std.mem.nativeToBig(u16, self.content_stack_ptr);
         const content_stack_base = std.mem.nativeToBig(u16, self.content_stack_base);
 
-        std.mem.copyForwards(u8, buffer[0..], &std.mem.toBytes(size_stack_ptr));
-        std.mem.copyForwards(u8, buffer[@sizeOf(u16)..], &std.mem.toBytes(content_stack_ptr));
-        std.mem.copyForwards(u8, buffer[@sizeOf(u16)*2..], &std.mem.toBytes(content_stack_base));
+        @memcpy(buffer[0..@sizeOf(u16)], &std.mem.toBytes(size_stack_ptr));
+        @memcpy(buffer[@sizeOf(u16)..@sizeOf(u16)*2], &std.mem.toBytes(content_stack_ptr));
+        @memcpy(buffer[@sizeOf(u16)*2..], &std.mem.toBytes(content_stack_base));
     }
 
     /// Decodes the encoded metadata from a buffer
@@ -52,8 +52,8 @@ pub fn init(allocator: std.mem.Allocator, path: []const u8) !void {
     // encode the metadata
     const initial: MetaData = .{
         .size_stack_ptr = 3 * @sizeOf(u16),
-        .content_stack_ptr = 3 * @sizeOf(u16) + block_size / 4,
-        .content_stack_base = 3 * @sizeOf(u16) + block_size / 4,
+        .content_stack_ptr = 3 * @sizeOf(u16) + block_size / 8,
+        .content_stack_base = 3 * @sizeOf(u16) + block_size / 8,
     };
 
     // write the meta-data
